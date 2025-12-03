@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Els nombres enters</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #f0f4ff;
+      margin: 0;
+    }
+    #game-container {
+      background: white;
+      padding: 20px 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 400px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #4a6cf7;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #3b57c9;
+    }
+    #timer {
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    #score {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-container">
+    <h2>Els nombres enters ±</h2>
+    <p>Resol el màxim nombre d’operacions en 60 segons.</p>
+
+    <div id="timer">Temps: 60</div>
+    <div id="operation"></div>
+
+    <input id="answer" type="number" placeholder="La teva resposta" />
+
+    <button onclick="submitAnswer()">Respon</button>
+
+    <div id="score">Puntuació: 0</div>
+
+    <button onclick="startGame()">Inicia el joc</button>
+  </div>
+
+<script>
+  let currentResult = 0;
+  let score = 0;
+  let timeLeft = 60;
+  let timerInterval;
+  let expectedAnswer;
+  let studentName = "";
+
+  const API_URL = "https://script.google.com/macros/s/AKfycbzon1ltR1S2WQngWRYaU-Fu6admtRTuF4swa3ubDDjyp5PZWOoSXURV-9GBsOb5GDg/exec";
+
+  function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function generateOperation() {
+    const num = randomInt(-20, 20);
+    const op = Math.random() < 0.5 ? "+" : "-";
+
+    const operationText = `${currentResult} ${op} ${Math.abs(num)}`;
+    document.getElementById("operation").innerText = operationText;
+
+    return op === "+" ? currentResult + Math.abs(num) : currentResult - Math.abs(num);
+  }
+
+  function startGame() {
+    studentName = prompt("Escriu el teu nom:");
+
+    if (!studentName || studentName.trim() === "") {
+      alert("Has d’escriure un nom per jugar!");
+      return;
+    }
+
+    score = 0;
+    timeLeft = 60;
+    currentResult = randomInt(-10, 10);
+
+    document.getElementById("score").innerText = "Puntuació: 0";
+    document.getElementById("timer").innerText = `Temps: ${timeLeft}`;
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      document.getElementById("timer").innerText = `Temps: ${timeLeft}`;
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        document.getElementById("operation").innerText = "Temps exhaurit!";
+        sendScore();
+      }
+    }, 1000);
+
+    nextOperation();
+  }
+
+  function nextOperation() {
+    expectedAnswer = generateOperation();
+  }
+
+  function submitAnswer() {
+    if (timeLeft <= 0) return;
+    const userAnswer = parseInt(document.getElementById("answer").value);
+    document.getElementById("answer").value = "";
+
+    if (userAnswer === expectedAnswer) {
+      score++;
+      currentResult = expectedAnswer;
+      document.getElementById("score").innerText = `Puntuació: ${score}`;
+      nextOperation();
+    } else {
+      flashError();
+    }
+  }
+
+  document.getElementById("answer").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") submitAnswer();
+  });
+
+  function flashError() {
+    const op = document.getElementById("operation");
+    op.textContent += " ❌";
+    op.style.color = "red";
+    setTimeout(() => {
+      op.style.color = "black";
+      op.textContent = op.textContent.replace(" ❌", "");
+    }, 700);
+  }
+
+  function sendScore() {
+    fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nom: studentName,
+        puntuacio: score
+      })
+    })
+    .then(r => r.text())
+    .then(() => alert("Puntuació enviada correctament!"))
+    .catch(() => alert("Error enviant la puntuació."));
+  }
+</script>
+
+</body>
+</html>
